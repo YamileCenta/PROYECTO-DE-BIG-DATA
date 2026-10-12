@@ -34,6 +34,8 @@ La solución utiliza una arquitectura **On-premise** basada en:
 - Apache Parquet
 - Git / GitHub
 
+<img width="1600" height="549" alt="WhatsApp Image 2026-10-11 at 11 06 25 PM" src="https://github.com/user-attachments/assets/17478578-55bc-4aa1-bbc9-1592873879a7" />
+
 El flujo general implementado es:
 
 ```text
