@@ -564,7 +564,8 @@ El usuario debe obtenerlos directamente desde PhysioNet y cumplir con las condic
 
 ---
 
-# Equipo
+# Equipo de trabajo 
+GRUPO 8:
 
 | Integrante | Unidad 1 | Unidad 2 |
 |---|---|---|
