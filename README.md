@@ -527,6 +527,8 @@ spark-submit scripts/benchmark/escalabilidad.py
 ```
 
 El orden general del pipeline es:
+
+```text
 Ingesta SIS + MIMIC
         │
         ▼
@@ -543,7 +545,8 @@ Optimización del JOIN
         │
         ▼
 Prueba de escalabilidad
----
+```
+
 
 ## 4. Ejecutar notebooks
 
