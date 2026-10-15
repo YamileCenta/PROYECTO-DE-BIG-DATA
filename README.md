@@ -3,8 +3,6 @@ Big Data y Analítica para la detección temprana de complicaciones críticas en
 
 ## Descripción del proyecto
 
-Proyecto desarrollado para el curso **Big Data y Analítica de Datos** de la Universidad Privada Antenor Orrego (UPAO).
-
 La solución tiene como organización beneficiaria al **Seguro Integral de Salud (SIS)** y busca analizar información de afiliados con Diabetes Mellitus para apoyar la identificación temprana de perfiles con mayor riesgo de hospitalización o reingreso.
 
 Se utilizan dos fuentes reales:
@@ -263,30 +261,29 @@ tasa_reingreso_30d
 
 Se exige un mínimo de **30 pacientes MIMIC-IV por perfil** para considerar válida la métrica de referencia.
 
-Posteriormente se realiza:
+La integración se encuentra implementada en:
+```text
+scripts/integracion/
+```
 
+Posteriormente se realiza:
 ```text
 SIS
 LEFT JOIN
-Métricas MIMIC
+Métricas agregadas MIMIC
 ```
 
-usando:
-
+utilizando:
 ```text
 grupo_edad + sexo_norm
 ```
 
 Los afiliados SIS que no cuentan con un perfil equivalente en MIMIC-IV permanecen en el conjunto.
-
-No se les asignan valores clínicos artificiales.
-
+No se asignan valores clínicos artificiales.
 Se utiliza la variable:
-
 ```text
 sin_ref_mimic
 ```
-
 para identificar estos casos.
 
 ---
@@ -330,11 +327,13 @@ Resultados obtenidos:
 | AUC-ROC | 0.5724 |
 | AUC-PR | 0.2453 |
 
-El modelo base presenta capacidad discriminativa limitada y, con el
-umbral utilizado, una baja capacidad para detectar la clase positiva.
-Estos resultados se utilizarán como referencia para evaluar mejoras
-posteriores mediante ajuste del umbral, balanceo de clases y modelos
-alternativos.
+El modelo base presenta una capacidad discriminativa limitada y dificultades para identificar correctamente la clase positiva con el umbral utilizado.
+Estos resultados se utilizarán como línea base técnica para evaluar posteriormente mejoras mediante:
+- ajuste del umbral de clasificación;
+- tratamiento del desbalance de clases;
+- incorporación de nuevas características;
+- evaluación de modelos alternativos.
+
 ---
 
 # Optimización del rendimiento
@@ -358,9 +357,13 @@ df.explain("formatted")
 ```
 ---
 
----
+# Prueba de escalabilidad
 
-### Pipeline principal
+La prueba se realizó exclusivamente para evaluar rendimiento.
+
+Los registros replicados **no se utilizan en el análisis exploratorio ni en el modelo predictivo**.
+
+## Pipeline principal
 
 | Factor | Filas de entrada | Espacio estimado requerido | Tiempo | RAM pico | Estado |
 |---|---:|---:|---:|---:|---|
@@ -368,12 +371,11 @@ df.explain("formatted")
 | 10x | — | 98.74 GB | — | — | Omitido por capacidad |
 | 100x | — | 852.41 GB | — | — | Omitido por capacidad |
 
-La máquina virtual disponía de aproximadamente **48.42 GB libres**. 
-Por ello, los escenarios 10x y 100x no fueron materializados para evitar
-la saturación del almacenamiento.
+La máquina virtual disponía de aproximadamente **48.42 GB libres**.
 
-Como prueba complementaria se evaluó el comportamiento incremental
-sobre `labevents`:
+Por ello, los escenarios 10x y 100x no fueron materializados para evitar la saturación del almacenamiento.
+
+Como prueba complementaria se evaluó el comportamiento incremental sobre `labevents`.
 
 | Factor | Tiempo | RAM pico | Spill memoria | Spill disco |
 |---|---:|---:|---:|---:|
@@ -382,8 +384,13 @@ sobre `labevents`:
 | 4x | 27.36 s | 15.13 GB | 0 GB | 0 GB |
 | 8x | 83.09 s | 15.42 GB | 11.937 GB | 1.958 GB |
 
-El escenario 8x fue el primero en presentar spill significativo y uso
-máximo de CPU, evidenciando degradación del rendimiento.
+El escenario 8x fue el primero en presentar spill significativo y uso máximo de CPU, evidenciando una degradación del rendimiento.
+
+Los scripts relacionados con estas pruebas se encuentran en:
+
+```text
+scripts/benchmark/
+```
 
 ---
 
@@ -420,7 +427,7 @@ Apache Spark / PySpark 3.5.1
 JupyterLab 4.6.3
 Python 3
 Apache Parquet
-Git
+Git / GitHub
 ```
 
 ---
@@ -429,13 +436,13 @@ Git
 
 ## 1. Iniciar Hadoop
 
-Verificar procesos:
+Verificar los procesos:
 
 ```bash
 jps
 ```
 
-Deben estar activos, según la configuración utilizada:
+Según la configuración utilizada deben encontrarse activos:
 
 ```text
 NameNode
@@ -460,15 +467,102 @@ hdfs dfs -ls -R /bigdata-diabetes
 
 ---
 
-## 3. Iniciar JupyterLab
+## 3. Ejecutar el pipeline mediante scripts
+
+La implementación reproducible del pipeline se encuentra organizada en la carpeta `scripts/`.
+
+La secuencia recomendada de ejecución es la siguiente:
+
+### 3.1. Ingesta de datos
+
+Carga de la fuente principal SIS:
+
+```bash
+spark-submit scripts/ingesta/ingesta_sis.py
+```
+
+Carga de las tablas seleccionadas de MIMIC-IV:
+
+```bash
+spark-submit scripts/ingesta/ingesta_mimic.py
+```
+
+### 3.2. Procesamiento y limpieza
+
+Limpieza y transformación de MIMIC-IV:
+
+```bash
+spark-submit scripts/procesamiento/limpieza_sis.py
+```
+
+Limpieza y transformación de MIMIC-IV:
+```bash
+spark-submit scripts/procesamiento/limpieza_mimic.py
+```
+
+### 3.3. Control de calidad
+
+Aplicación de las reglas de calidad definidas para los datos procesados:
+```bash
+spark-submit scripts/calidad/calidad.py
+```
+
+### 3.4. Integración SIS – MIMIC-IV
+Construcción de perfiles agregados e integración analítica mediante LEFT JOIN:
+```bash
+spark-submit scripts/integracion/integracion_sis_mimic.py
+```
+
+### 3.5. Optimización del JOIN
+
+Evaluación del Standard Join frente al Broadcast Join:
+
+```bash
+spark-submit scripts/benchmark/join.py
+```
+
+3.6. Prueba de escalabilidad
+
+Ejecución de las pruebas de rendimiento y escalabilidad:
+
+```bash
+spark-submit scripts/benchmark/escalabilidad.py
+```
+
+El orden general del pipeline es:
+Ingesta SIS + MIMIC
+        │
+        ▼
+Procesamiento y limpieza
+        │
+        ▼
+Control de calidad
+        │
+        ▼
+Integración SIS–MIMIC
+        │
+        ▼
+Optimización del JOIN
+        │
+        ▼
+Prueba de escalabilidad
+---
+
+## 4. Ejecutar notebooks
+
+Los notebooks complementan la ejecución del pipeline y se utilizan principalmente para:
+
+- inspección de datos;
+- validación de resultados;
+- análisis exploratorio;
+- visualizaciones;
+- modelado.
+
+Para iniciar JupyterLab:
 
 ```bash
 jupyter lab
 ```
-
----
-
-## 4. Ejecutar notebooks
 
 Orden recomendado:
 
@@ -485,38 +579,47 @@ notebooks/
 └── 09_modelo_base.ipynb
 ```
 
+Los **scripts** contienen las etapas reproducibles del pipeline, mientras que los **notebooks** permiten inspeccionar, validar, analizar y documentar los resultados obtenidos.
+
 ---
 
 # Estructura del repositorio
 
 ```text
-bigdata-diabetes-sis/
+PROYECTO-DE-BIG-DATA/
 │
 ├── README.md
+├── .gitignore
 │
 ├── notebooks/
 │   ├── 01_ingesta.ipynb
 │   ├── 02_limpieza_sis.ipynb
 │   ├── 03_limpieza_mimic.ipynb
 │   ├── 04_integracion.ipynb
-│   ├── 05_optimizacion.ipynb
-│   └── 06_escalabilidad.ipynb
+│   ├── 05_calidad.ipynb
+│   ├── 06_optimizacion.ipynb
+│   ├── 07_escalabilidad.ipynb
+│   ├── 08_eda.ipynb
+│   └── 09_modelo_base.ipynb
 │
 ├── scripts/
-│   ├── ingesta/
-│   ├── procesamiento/
+│   ├── benchmark/
 │   ├── calidad/
-│   └── benchmark/
-│
-├── config/
+│   ├── ingesta/
+│   ├── integracion/
+│   └── procesamiento/
 │
 ├── docs/
 │   ├── arquitectura/
+│   │   └── arquitectura_final.png
+│   │
 │   └── evidencias/
+│       ├── evidencia_hdfs/
+│       ├── evidencia_optimizacion/
+│       ├── evidencia_escalabilidad/
+│       └── evidencia_modelo/
 │
-├── sample_data/
-│
-└── .gitignore
+└── sample_data/
 ```
 
 ---
@@ -536,13 +639,13 @@ Afiliados activos en el Seguro Integral de Salud
 con diagnóstico de Diabetes Mellitus
 ```
 
-El conjunto completo no necesariamente debe mantenerse dentro del repositorio.
+El conjunto completo puede obtenerse directamente desde la fuente institucional.
 
 ---
 
 ## MIMIC-IV
 
-MIMIC-IV v3.1 es distribuido mediante PhysioNet y requiere acceso credencializado.
+MIMIC-IV v3.1 es distribuido mediante **PhysioNet** y requiere acceso credencializado.
 
 Por sus condiciones de uso:
 
@@ -552,7 +655,41 @@ El usuario debe obtenerlos directamente desde PhysioNet y cumplir con las condic
 
 ---
 
+# Documentación y evidencias
 
+## Arquitectura
+
+La carpeta:
+
+```text
+docs/arquitectura/
+```
+
+contiene el diagrama correspondiente a la arquitectura final implementada en el proyecto.
+
+---
+
+## Evidencias
+
+La carpeta:
+
+```text
+docs/evidencias/
+```
+
+contiene evidencias de las principales etapas ejecutadas, entre ellas:
+
+- estructura de las zonas HDFS;
+- escritura de datos en Silver y Gold;
+- ejecución del pipeline;
+- comparación Standard Join vs Broadcast Join;
+- prueba de escalabilidad;
+- resultados del análisis exploratorio;
+- resultados del modelo base.
+
+Estas evidencias complementan los scripts y notebooks del repositorio.
+
+---
 
 # Limitaciones
 
@@ -560,12 +697,14 @@ El usuario debe obtenerlos directamente desde PhysioNet y cumplir con las condic
 - La integración SIS–MIMIC se realiza mediante perfiles agregados y no mediante identidad individual.
 - El entorno utilizado corresponde a máquinas virtuales académicas y no a infraestructura oficial del SIS.
 - El módulo ICU de MIMIC-IV no forma parte del alcance implementado.
+- Los escenarios 10x y 100x del pipeline completo no fueron materializados debido a restricciones de almacenamiento de la máquina virtual.
 - Los resultados tienen fines académicos y de apoyo analítico; no constituyen diagnóstico ni recomendación médica.
 
 ---
 
-# Equipo de trabajo 
-GRUPO 8:
+# Equipo de trabajo
+
+**Grupo 8**
 
 | Integrante | Unidad 1 | Unidad 2 |
 |---|---|---|
