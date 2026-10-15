@@ -317,6 +317,25 @@ indicadores_riesgo
 ```
 
 ---
+# Modelo base
+
+Se implementó una Regresión Logística mediante Spark ML como línea base
+técnica para el problema de clasificación.
+
+Resultados obtenidos:
+
+| Métrica | Resultado |
+|---|---:|
+| Accuracy | 79.86 % |
+| AUC-ROC | 0.5724 |
+| AUC-PR | 0.2453 |
+
+El modelo base presenta capacidad discriminativa limitada y, con el
+umbral utilizado, una baja capacidad para detectar la clase positiva.
+Estos resultados se utilizarán como referencia para evaluar mejoras
+posteriores mediante ajuste del umbral, balanceo de clases y modelos
+alternativos.
+---
 
 # Optimización del rendimiento
 
@@ -337,26 +356,24 @@ La estrategia física fue comprobada mediante:
 ```python
 df.explain("formatted")
 ```
+---
 
 ---
 
-# Prueba de escalabilidad
-
-La prueba se realizó exclusivamente para evaluar rendimiento.
-
-Los registros replicados **no se utilizan en el análisis ni en el modelo predictivo**.
-
 ### Pipeline principal
 
-| Factor | Filas de entrada | Tiempo | RAM pico | Estado |
-|---|---:|---:|---:|---|
-| 1x | 7,814,429 | 35.32 s | 15.13 GB | OK |
-| 10x | — | — | — | Omitido por capacidad |
-| 100x | — | — | — | Omitido por capacidad |
+| Factor | Filas de entrada | Espacio estimado requerido | Tiempo | RAM pico | Estado |
+|---|---:|---:|---:|---:|---|
+| 1x | 7,814,429 | 2.79 GB | 35.32 s | 15.13 GB | OK |
+| 10x | — | 98.74 GB | — | — | Omitido por capacidad |
+| 100x | — | 852.41 GB | — | — | Omitido por capacidad |
 
-El escenario 10x requería aproximadamente 4.3 GB adicionales de almacenamiento y el escenario 100x aproximadamente 43.4 GB, mientras que la VM disponía de alrededor de 4.1 GB libres.
+La máquina virtual disponía de aproximadamente **48.42 GB libres**. 
+Por ello, los escenarios 10x y 100x no fueron materializados para evitar
+la saturación del almacenamiento.
 
-Como prueba complementaria se evaluó una carga de mayor volumen.
+Como prueba complementaria se evaluó el comportamiento incremental
+sobre `labevents`:
 
 | Factor | Tiempo | RAM pico | Spill memoria | Spill disco |
 |---|---:|---:|---:|---:|
@@ -365,7 +382,8 @@ Como prueba complementaria se evaluó una carga de mayor volumen.
 | 4x | 27.36 s | 15.13 GB | 0 GB | 0 GB |
 | 8x | 83.09 s | 15.42 GB | 11.937 GB | 1.958 GB |
 
-A partir de 8x se observó una degradación importante debido a operaciones de spill hacia disco.
+El escenario 8x fue el primero en presentar spill significativo y uso
+máximo de CPU, evidenciando degradación del rendimiento.
 
 ---
 
@@ -455,17 +473,17 @@ jupyter lab
 Orden recomendado:
 
 ```text
-01_ingesta.ipynb
-02_limpieza_sis.ipynb
-03_limpieza_mimic.ipynb
-04_integracion.ipynb
-05_optimizacion.ipynb
-06_escalabilidad.ipynb
-07_eda.ipynb
-08_modelo_base.ipynb
+notebooks/
+├── 01_ingesta.ipynb
+├── 02_limpieza_sis.ipynb
+├── 03_limpieza_mimic.ipynb
+├── 04_integracion.ipynb
+├── 05_calidad.ipynb
+├── 06_optimizacion.ipynb
+├── 07_escalabilidad.ipynb
+├── 08_eda.ipynb
+└── 09_modelo_base.ipynb
 ```
-
-> Los nombres pueden variar de acuerdo con la estructura final del repositorio.
 
 ---
 
