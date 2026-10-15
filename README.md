@@ -62,9 +62,6 @@ Fuentes
  Homologación de variables
           │
           ▼
- Perfiles agregados MIMIC
-          │
-          ▼
  LEFT JOIN SIS + MIMIC
           │
           ▼
