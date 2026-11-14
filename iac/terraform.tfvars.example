@@ -1,0 +1,7 @@
+aws_region = "us-east-2"
+project_name = "sis-mimic-bigdata"
+bucket_suffix = "cambiar-por-identificador-unico"
+enable_emr = false
+enable_quicksight = false
+enable_kms = false
+# No incluir credenciales ni datos de pacientes en este archivo.
